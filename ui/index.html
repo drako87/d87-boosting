@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="vehicle-card" class="hidden">
+    <div class="card-header">Vehículo Objetivo</div>
+    <div class="card-row"><span class="label">Modelo</span><span id="v-name" class="value"></span></div>
+    <div class="card-row"><span class="label">Matrícula</span><span id="v-plate" class="value"></span></div>
+    <div class="card-row"><span class="label">Color</span><span id="v-color" class="value"></span></div>
+    <div class="card-row"><span id="v-reward-label" class="label">Ganancia (entrega)</span><span id="v-reward" class="value"></span></div>
+</div>
+
+<div id="wallet-overlay" class="hidden">
+    <div id="wallet-app">
+        <div class="wallet-topbar">
+            <span class="wallet-title">D87 Tablet</span>
+            <span id="wallet-close">✕</span>
+        </div>
+
+        <div class="wallet-tabs">
+            <button class="tab-btn active" data-tab="account">Cuenta</button>
+            <button class="tab-btn" data-tab="send">Enviar</button>
+            <button class="tab-btn" data-tab="ranking">Ranking</button>
+            <button class="tab-btn" data-tab="contracts">Contratos</button>
+        </div>
+
+        <!-- LOGIN / REGISTRO -->
+        <div id="view-auth" class="tab-view">
+            <div class="auth-switch">
+                <button id="btn-show-login" class="mini active">Iniciar sesión</button>
+                <button id="btn-show-register" class="mini">Crear cartera</button>
+            </div>
+
+            <div id="form-login" class="auth-form">
+                <input type="text" id="login-username" placeholder="Usuario">
+                <input type="password" id="login-password" placeholder="Contraseña">
+                <button id="btn-login">Iniciar sesión</button>
+            </div>
+
+            <div id="form-register" class="auth-form hidden">
+                <input type="text" id="register-username" placeholder="Elige un usuario">
+                <input type="password" id="register-password" placeholder="Elige una contraseña">
+                <button id="btn-register">Crear cartera digital</button>
+            </div>
+
+            <div id="auth-message" class="message"></div>
+        </div>
+
+        <!-- CUENTA (LOGUEADO) -->
+        <div id="view-account" class="tab-view hidden">
+            <div class="balance-box">
+                <span class="balance-label">Saldo disponible</span>
+                <span id="account-balance" class="balance-value">0</span>
+                <span class="balance-unit">CRIPTO</span>
+            </div>
+            <button id="btn-refresh-balance" class="secondary">Actualizar saldo</button>
+            <button id="btn-logout" class="secondary danger">Cerrar sesión</button>
+        </div>
+
+        <!-- ENVIAR -->
+        <div id="view-send" class="tab-view hidden">
+            <input type="text" id="send-username" placeholder="Usuario destinatario">
+            <input type="number" id="send-amount" placeholder="Cantidad" min="1">
+            <button id="btn-send">Enviar cripto</button>
+            <div id="send-message" class="message"></div>
+        </div>
+
+        <!-- RANKING -->
+        <div id="view-ranking" class="tab-view hidden">
+            <div class="ranking-header">Top carteras digitales</div>
+            <ol id="ranking-list" class="ranking-list"></ol>
+        </div>
+
+        <!-- CONTRATOS -->
+        <div id="view-contracts" class="tab-view hidden">
+            <div class="ranking-header">Contratos disponibles</div>
+            <div id="contracts-list" class="contracts-list"></div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
