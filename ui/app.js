@@ -76,10 +76,13 @@ function renderContracts() {
         const card = document.createElement('div');
         card.className = 'contract-card';
         const inProgress = c.status === 'in_progress';
+        const tierColor = c.tierColor || '#d4af37';
+        card.style.borderLeftColor = tierColor;
 
         card.innerHTML = `
             <div class="contract-top">
-                <span class="contract-tier">${c.tierLabel}</span>
+                <span class="contract-tier" style="background:${tierColor}">${c.tierLabel}</span>
+                ${c.trackerRequired ? '<span class="contract-tracker">🛰 Rastreador</span>' : ''}
                 ${inProgress ? '<span class="contract-status">En curso</span>' : ''}
             </div>
             <div class="contract-row"><span>Vehículo</span><span>${c.car}</span></div>
