@@ -76,6 +76,7 @@ local function generateContract(identifier, data)
     local reward = math.random(tier.reward.min, tier.reward.max)
     local keepCost = math.random(tier.keepCost.min, tier.keepCost.max)
     local guardCount = math.random(tier.guardCount.min, tier.guardCount.max)
+    local trackerRequired = (tier.trackerChance or 0) > 0 and math.random(100) <= tier.trackerChance
 
     contractCounter = contractCounter + 1
 
@@ -87,8 +88,12 @@ local function generateContract(identifier, data)
         reward = reward,
         keepCost = keepCost,
         guardCount = guardCount,
+        guardWeapons = tier.guardWeapons,
+        trackerRequired = trackerRequired,
+        skillDifficulty = tier.skillDifficulty,
         tierLevel = tier.level,
         tierLabel = tier.label,
+        tierColor = tier.color,
         status = 'pending',
         createdAt = os.time(),
     }
@@ -221,7 +226,7 @@ RegisterNetEvent('carboosting:server:transferContract', function(id, targetServe
     Bridge.Notify(targetSrc, 'Has recibido un contrato de otro jugador.', 'inform')
 end)
 
-RegisterNetEvent('carboosting:server:completeContract', function(contractData)
+RegisterNetEvent('carboosting:server:completeContract', function(contractData, trackerActive)
     local src = source
     local identifier = Wallet.GetIdentifier(src)
     if not identifier then return end
@@ -238,9 +243,16 @@ RegisterNetEvent('carboosting:server:completeContract', function(contractData)
     local reward = tonumber(contractData and contractData.reward)
     if not reward or reward <= 0 then return end
 
-    local credited = Wallet.AddBalance(src, math.floor(reward))
+    local multiplier = trackerActive and Config.ContractTrackerPenalty or 1.0
+    local amount = math.floor(reward * multiplier)
+
+    local credited = Wallet.AddBalance(src, amount)
     if credited then
-        Bridge.Notify(src, ('Contrato completado. Has recibido %d cripto.'):format(math.floor(reward)), 'success')
+        if multiplier < 1.0 then
+            Bridge.Notify(src, ('Entregado con rastreador activo. Pago reducido: %d cripto.'):format(amount), 'warning')
+        else
+            Bridge.Notify(src, ('Contrato completado. Has recibido %d cripto.'):format(amount), 'success')
+        end
     else
         Bridge.Notify(src, 'Contrato completado, pero necesitas una cartera digital para cobrar en cripto.', 'error')
     end
@@ -301,4 +313,29 @@ RegisterNetEvent('carboosting:server:requestContracts', function()
         list[#list+1] = contract
     end
     TriggerClientEvent('carboosting:client:contractsList', src, list)
+end)
+
+---------------------------------------------------------------
+-- Rastreador de contratos (valida hak_kit, igual que en las misiones)
+---------------------------------------------------------------
+RegisterNetEvent('carboosting:server:requestContractTrackerRemoval', function(id)
+    local src = source
+    local identifier = Wallet.GetIdentifier(src)
+    if not identifier then return end
+
+    local data = getData(identifier)
+    local contract = data.contracts[id]
+    if not contract or not contract.trackerRequired then return end
+
+    local hasKit = Bridge.GetItemCount(src, Config.TrackerKitItem) > 0
+    if not hasKit then
+        TriggerClientEvent('carboosting:client:trackerKitMissing', src)
+        return
+    end
+
+    TriggerClientEvent('carboosting:client:startContractTrackerRemoval', src, contract.skillDifficulty)
+end)
+
+RegisterNetEvent('carboosting:server:contractTrackerRemoved', function()
+    -- Confirmación informativa; el estado real se valida en la entrega
 end)
