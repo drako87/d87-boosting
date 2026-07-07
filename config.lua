@@ -21,7 +21,7 @@ Config.Cooldown = 600 -- segundos de enfriamiento tras entregar
 
 -- NPCs que defienden el vehículo
 Config.GuardModel  = 'g_m_y_lost_01'
-Config.GuardWeapon = 'WEAPON_BAT'
+Config.GuardWeapon = 'WEAPON_BAT' -- arma por defecto si un guardia no trae lista propia (guardWeapons)
 Config.GuardTriggerDistance = 12.0 -- distancia al vehículo para que ataquen
 
 -- ============================================================
@@ -57,18 +57,18 @@ Config.SpawnLocations = {
 -- el jugador elige entregarlo en vez de quedárselo).
 -- Deben ser calles/solares abiertos, nunca la entrada de un local o taller.
 Config.DropOffLocations = {
-    vector4(56.82, 160.78, 104.73, 250.3),  -- aparcamiento en azotea (abierto)
-    vector4(-320.9, -1471.9, 29.9, 60.0),   -- calle abierta, Pillbox
-    vector4(-1035.9, -523.9, 33.9, 130.0),  -- calle abierta, Morningwood
+    vector4(60.57, 159.8, 103.73, 240.13),  -- aparcamiento en azotea (abierto)
+    vector4(-423.13, -1682.03, 18.03, 160.02),   -- calle abierta, Pillbox
+    vector4(-2169.01, 4278.43, 47.96, 166.13),  -- calle abierta, Morningwood
 }
 
 -- Dónde se QUEDA/VENDE el vehículo cuando el jugador marca la opción
 -- de "quedarme con el vehículo" en vez de entregarlo.
 -- Igual que arriba: calles/solares abiertos, nunca dentro de un local.
 Config.KeepLocations = {
-    vector4(215.1, -800.9, 30.9, 250.0),  -- calle abierta, Alta
-    vector4(-46.7, -1750.9, 29.4, 30.0),  -- solar abierto, Strawberry
-    vector4(908.5, -1749.7, 30.4, 210.0), -- calle abierta, Elysian Island
+    vector4(486.48, -1307.85, 28.26, 295.81),  -- calle abierta, Alta
+    vector4(258.69, 2588.95, 43.95, 186.6),  -- solar abierto, Strawberry
+    vector4(135.55, -1050.63, 28.15, 337.34), -- calle abierta, Elysian Island
 }
 Config.KeepDuration = 20000 -- ms que dura la barra de "adquiriendo vehículo"
 
@@ -98,28 +98,45 @@ Config.ContractIntervalMin = 180  -- segundos min para que llegue un contrato nu
 Config.ContractIntervalMax = 420  -- segundos max
 Config.ContractRecentMemory = 6   -- nº de coches recientes a evitar repetir por jugador
 Config.ContractInteractDistance = 8.0
+Config.ContractTrackerPenalty = 0.5 -- multiplicador de pago si se entrega con el rastreador aún activo
 
+-- Tiers de contratos: cada uno define coches, pago, coste de "quedarte el
+-- vehículo", vigilantes (cantidad y armamento) y probabilidad de que el
+-- contrato incluya rastreador (requiere hak_kit para desactivarlo).
+-- 'color' se usa solo para pintar la insignia del tier en la tablet.
 Config.ContractTiers = {
-    { level = 1, label = 'Novato',     minCompleted = 0,
+    { level = 1, label = 'Novato', color = '#9d9d9d', minCompleted = 0,
       cars = {'blista', 'panto', 'dilettante', 'issi2', 'asea'},
       reward = { min = 10, max = 20 },
-      keepCost = { min = 30, max = 50 },
-      guardCount = { min = 0, max = 1 } },
-    { level = 2, label = 'Intermedio', minCompleted = 5,
+      keepCost = { min = 40, max = 70 },
+      guardCount = { min = 0, max = 1 },
+      guardWeapons = {'WEAPON_BAT'},
+      trackerChance = 0,      -- % de probabilidad de llevar rastreador
+      skillDifficulty = {} },
+    { level = 2, label = 'Intermedio', color = '#cd7f32', minCompleted = 5,
       cars = {'dominator', 'gauntlet', 'f620', 'sultan', 'tampa'},
       reward = { min = 25, max = 45 },
-      keepCost = { min = 70, max = 100 },
-      guardCount = { min = 1, max = 2 } },
-    { level = 3, label = 'Experto',    minCompleted = 15,
+      keepCost = { min = 100, max = 150 },
+      guardCount = { min = 1, max = 2 },
+      guardWeapons = {'WEAPON_BAT', 'WEAPON_KNIFE'},
+      trackerChance = 30,
+      skillDifficulty = {'easy'} },
+    { level = 3, label = 'Experto', color = '#c0c0c0', minCompleted = 15,
       cars = {'adder', 'zentorno', 't20', 'osiris', 'vacca'},
       reward = { min = 60, max = 100 },
-      keepCost = { min = 140, max = 200 },
-      guardCount = { min = 2, max = 3 } },
-    { level = 4, label = 'Élite',      minCompleted = 30,
+      keepCost = { min = 220, max = 320 },
+      guardCount = { min = 2, max = 4 },
+      guardWeapons = {'WEAPON_PISTOL', 'WEAPON_MICROSMG'},
+      trackerChance = 60,
+      skillDifficulty = {'easy', 'medium'} },
+    { level = 4, label = 'Élite', color = '#d4af37', minCompleted = 30,
       cars = {'turismor', 'entityxf', 'reaper', 'tempesta', 'vagner'},
       reward = { min = 120, max = 180 },
-      keepCost = { min = 250, max = 350 },
-      guardCount = { min = 3, max = 3 } },
+      keepCost = { min = 400, max = 550 },
+      guardCount = { min = 3, max = 5 },
+      guardWeapons = {'WEAPON_MICROSMG', 'WEAPON_ASSAULTRIFLE'},
+      trackerChance = 85,
+      skillDifficulty = {'easy', 'medium', 'hard'} },
 }
 
 -- Misiones: cada una define pago, vehículos, dificultad (guardias/tracker) y requisitos
@@ -135,6 +152,7 @@ Config.Missions = {
         requirements = {},
         difficulty = {
             npcGuards = { min = 1, max = 1 },
+            guardWeapons = {'WEAPON_BAT'},
             trackerRequired = false,
             skillDifficulty = {},
         },
@@ -151,10 +169,11 @@ Config.Missions = {
         requirements = {'hak_kit'},
         difficulty = {
             npcGuards = { min = 2, max = 2 },
+            guardWeapons = {'WEAPON_BAT', 'WEAPON_PISTOL'},
             trackerRequired = true,
             skillDifficulty = {'easy', 'medium'},
         },
-        description = 'El vehículo tiene rastreador y 2 vigilantes armados con bates lo custodian. Necesitas un kit de hackeo (hak_kit) para desactivar el rastreador. Pago en dinero negro.',
+        description = 'El vehículo tiene rastreador y 2 vigilantes armados lo custodian. Necesitas un kit de hackeo (hak_kit) para desactivar el rastreador. Pago en dinero negro.',
     },
     [3] = {
         id = 3,
@@ -170,9 +189,10 @@ Config.Missions = {
         requirements = {'hak_kit'},
         difficulty = {
             npcGuards = { min = 3, max = 3 },
+            guardWeapons = {'WEAPON_PISTOL', 'WEAPON_MICROSMG'},
             trackerRequired = true,
             skillDifficulty = {'easy', 'medium', 'hard'},
         },
-        description = 'Vehículo de alta gama muy vigilado (3 guardias) y con rastreador. Necesitas un kit de hackeo (hak_kit). Pago combinado: criptomonedas + dinero negro.',
+        description = 'Vehículo de alta gama muy vigilado (3 guardias armados) y con rastreador. Necesitas un kit de hackeo (hak_kit). Pago combinado: criptomonedas + dinero negro.',
     },
 }
