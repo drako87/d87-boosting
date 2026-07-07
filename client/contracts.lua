@@ -12,6 +12,8 @@ local contractKeepInProgress = false
 local contractBlip = nil
 local contractSearchBlip = nil
 local contractTextUIShown = false
+local contractTrackerActive = false
+local contractTrackerRequestSent = false
 
 function IsContractActive()
     return contractActive
@@ -95,6 +97,8 @@ RegisterNetEvent('carboosting:client:contractAccepted', function(contract)
     contractEngineWasOn = false
     contractDropOffSet = false
     contractKeepLocation = nil
+    contractTrackerActive = contract.trackerRequired or false
+    contractTrackerRequestSent = false
 
     local pickup = contract.pickup
     contractSearchBlip = AddBlipForCoord(pickup.x, pickup.y, pickup.z)
@@ -133,7 +137,7 @@ RegisterNetEvent('carboosting:client:contractAccepted', function(contract)
     SetModelAsNoLongerNeeded(hash)
 
     if contract.guardCount and contract.guardCount > 0 then
-        SpawnGuards(pickup, contract.guardCount)
+        SpawnGuards(pickup, contract.guardCount, contract.guardWeapons)
     end
 
     Bridge.Notify(('Contrato aceptado: roba un %s y llévalo al punto de entrega.'):format(contract.car), 'inform')
@@ -154,6 +158,8 @@ function cleanupContract()
     contractDropOffSet = false
     contractKeepLocation = nil
     contractCar = nil
+    contractTrackerActive = false
+    contractTrackerRequestSent = false
     WantsToKeepVehicle = false
     if contractSearchBlip then RemoveBlip(contractSearchBlip) contractSearchBlip = nil end
     if contractBlip then RemoveBlip(contractBlip) contractBlip = nil end
@@ -161,6 +167,25 @@ function cleanupContract()
     hideContractTextUI()
     HideVehicleCard()
 end
+
+---------------------------------------------------------------
+-- Rastreador del contrato (solo si el contrato lo incluye)
+---------------------------------------------------------------
+RegisterNetEvent('carboosting:client:startContractTrackerRemoval', function(skillDifficulty)
+    if not skillDifficulty or #skillDifficulty == 0 then return end
+
+    CreateThread(function()
+        local success = lib.skillCheck(skillDifficulty)
+        if success then
+            contractTrackerActive = false
+            TriggerServerEvent('carboosting:server:contractTrackerRemoved')
+            Bridge.Notify('¡Rastreador desactivado con éxito!', 'success')
+        else
+            contractTrackerRequestSent = false
+            Bridge.Notify('Fallaste desactivando el rastreador. Vuelve a intentarlo.', 'error')
+        end
+    end)
+end)
 
 ---------------------------------------------------------------
 -- Quedarse con el vehículo del contrato: confirmación + barra de progreso
@@ -241,6 +266,11 @@ CreateThread(function()
                     if GetResourceState('ps-dispatch') == 'started' then
                         exports['ps-dispatch']:CarBoosting(vehicle)
                     end
+
+                    if contractTrackerActive and not contractTrackerRequestSent then
+                        contractTrackerRequestSent = true
+                        TriggerServerEvent('carboosting:server:requestContractTrackerRemoval', activeContract.id)
+                    end
                 end
 
                 if contractInTargetCar and not contractDropOffSet then
@@ -292,7 +322,7 @@ CreateThread(function()
                                     hideContractTextUI()
                                     CreateThread(tryKeepContractVehicle)
                                 else
-                                    TriggerServerEvent('carboosting:server:completeContract', activeContract)
+                                    TriggerServerEvent('carboosting:server:completeContract', activeContract, contractTrackerActive)
                                     if DoesEntityExist(contractCar) then DeleteEntity(contractCar) end
                                     cleanupContract()
                                 end
