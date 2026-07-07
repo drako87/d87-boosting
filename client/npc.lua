@@ -1,7 +1,9 @@
 local activeGuards = {}
 local guardsEngaged = false
 
-function SpawnGuards(coords, count)
+function SpawnGuards(coords, count, weapons)
+    weapons = weapons or {Config.GuardWeapon}
+
     local hash = GetHashKey(Config.GuardModel)
     RequestModel(hash)
     local timeout = GetGameTimer() + 3000
@@ -9,14 +11,15 @@ function SpawnGuards(coords, count)
         Wait(0)
     end
 
-    local weaponHash = GetHashKey(Config.GuardWeapon)
-
     for i = 1, count do
+        local weaponName = weapons[math.random(#weapons)]
+        local weaponHash = GetHashKey(weaponName)
+
         local px = coords.x + math.random(-3, 3)
         local py = coords.y + math.random(-3, 3)
         local ped = CreatePed(4, hash, px, py, coords.z, 0.0, true, true)
         SetEntityAsMissionEntity(ped, true, true)
-        GiveWeaponToPed(ped, weaponHash, 1, false, true)
+        GiveWeaponToPed(ped, weaponHash, 250, false, true)
         SetCurrentPedWeapon(ped, weaponHash, true)
         SetPedCombatAbility(ped, 2)
         SetPedCombatRange(ped, 2)
