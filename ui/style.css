@@ -315,7 +315,6 @@ button {
 
 .contract-tier {
     font-size: 11px;
-    background: #d4af37;
     color: #101014;
     padding: 2px 8px;
     border-radius: 10px;
@@ -326,6 +325,13 @@ button {
     font-size: 11px;
     color: #7ee08a;
     font-weight: 600;
+}
+
+.contract-tracker {
+    font-size: 11px;
+    color: #ff8080;
+    font-weight: 600;
+    margin-left: 6px;
 }
 
 .contract-row {
