@@ -17,6 +17,7 @@ client_scripts {
     'client/ui.lua',
     'client/npc.lua',
     'client/wallet.lua',
+    'client/trackers.lua',
     'client/contracts.lua',
     'client/main.lua'
 }
@@ -24,6 +25,7 @@ client_scripts {
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/wallet.lua',
+    'server/trackers.lua',
     'server/contracts.lua',
     'server/economy.lua',
     'server/main.lua'
