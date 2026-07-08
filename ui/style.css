@@ -49,6 +49,14 @@ body {
     padding: 3px 0;
 }
 
+.card-row.hidden {
+    display: none;
+}
+
+#v-trackers-row .value {
+    color: #ff8080;
+}
+
 .label { color: #a0a0a5; }
 .value { font-weight: 600; }
 
