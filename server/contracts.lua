@@ -76,7 +76,9 @@ local function generateContract(identifier, data)
     local reward = math.random(tier.reward.min, tier.reward.max)
     local keepCost = math.random(tier.keepCost.min, tier.keepCost.max)
     local guardCount = math.random(tier.guardCount.min, tier.guardCount.max)
-    local trackerRequired = (tier.trackerChance or 0) > 0 and math.random(100) <= tier.trackerChance
+
+    local hasTracker = (tier.trackerChance or 0) > 0 and math.random(100) <= tier.trackerChance
+    local trackerCount = hasTracker and math.random(1, Config.TrackerMaxCount) or 0
 
     contractCounter = contractCounter + 1
 
@@ -89,7 +91,9 @@ local function generateContract(identifier, data)
         keepCost = keepCost,
         guardCount = guardCount,
         guardWeapons = tier.guardWeapons,
-        trackerRequired = trackerRequired,
+        trackerRequired = hasTracker,
+        trackerCount = trackerCount,
+        vehicleNetId = nil,
         skillDifficulty = tier.skillDifficulty,
         tierLevel = tier.level,
         tierLabel = tier.label,
@@ -226,7 +230,7 @@ RegisterNetEvent('carboosting:server:transferContract', function(id, targetServe
     Bridge.Notify(targetSrc, 'Has recibido un contrato de otro jugador.', 'inform')
 end)
 
-RegisterNetEvent('carboosting:server:completeContract', function(contractData, trackerActive)
+RegisterNetEvent('carboosting:server:completeContract', function(contractData)
     local src = source
     local identifier = Wallet.GetIdentifier(src)
     if not identifier then return end
@@ -234,9 +238,18 @@ RegisterNetEvent('carboosting:server:completeContract', function(contractData, t
     ActiveContractPlayers[src] = nil
 
     local id = contractData and contractData.id
+    local storedContract = id and getData(identifier).contracts[id]
+
+    local trackerActive = false
+    if storedContract then
+        trackerActive = storedContract.vehicleNetId and Trackers.GetCount(storedContract.vehicleNetId) > 0 or false
+        if storedContract.vehicleNetId then
+            Trackers.Unregister(storedContract.vehicleNetId)
+        end
+    end
+
     if id then
-        local data = getData(identifier)
-        data.contracts[id] = nil
+        getData(identifier).contracts[id] = nil
         TriggerClientEvent('carboosting:client:contractRemoved', src, id)
     end
 
@@ -249,7 +262,7 @@ RegisterNetEvent('carboosting:server:completeContract', function(contractData, t
     local credited = Wallet.AddBalance(src, amount)
     if credited then
         if multiplier < 1.0 then
-            Bridge.Notify(src, ('Entregado con rastreador activo. Pago reducido: %d cripto.'):format(amount), 'warning')
+            Bridge.Notify(src, ('Entregado con rastreador(es) activo(s). Pago reducido: %d cripto.'):format(amount), 'warning')
         else
             Bridge.Notify(src, ('Contrato completado. Has recibido %d cripto.'):format(amount), 'success')
         end
@@ -263,7 +276,19 @@ RegisterNetEvent('carboosting:server:completeContract', function(contractData, t
 end)
 
 RegisterNetEvent('carboosting:server:cancelContract', function()
-    ActiveContractPlayers[source] = nil
+    local src = source
+    ActiveContractPlayers[src] = nil
+
+    local identifier = Wallet.GetIdentifier(src)
+    if not identifier then return end
+
+    local data = getData(identifier)
+    for _, c in pairs(data.contracts) do
+        if c.status == 'in_progress' and c.vehicleNetId then
+            Trackers.Unregister(c.vehicleNetId)
+            c.vehicleNetId = nil
+        end
+    end
 end)
 
 RegisterNetEvent('carboosting:server:keepContractVehicle', function(id, plate, model)
@@ -281,6 +306,10 @@ RegisterNetEvent('carboosting:server:keepContractVehicle', function(id, plate, m
         Bridge.Notify(src, 'No se pudo cobrar el pago. Revisa tu cartera digital y saldo.', 'error')
         TriggerClientEvent('carboosting:client:keepContractFailed', src)
         return
+    end
+
+    if contract.vehicleNetId then
+        Trackers.Unregister(contract.vehicleNetId)
     end
 
     MySQL.insert('INSERT INTO d87_owned_vehicles (identifier, model, plate) VALUES (?, ?, ?)', {
@@ -316,26 +345,23 @@ RegisterNetEvent('carboosting:server:requestContracts', function()
 end)
 
 ---------------------------------------------------------------
--- Rastreador de contratos (valida hak_kit, igual que en las misiones)
+-- Registro del vehículo del contrato (sistema de rastreadores)
 ---------------------------------------------------------------
-RegisterNetEvent('carboosting:server:requestContractTrackerRemoval', function(id)
+RegisterNetEvent('carboosting:server:registerContractVehicle', function(id, netId)
     local src = source
     local identifier = Wallet.GetIdentifier(src)
     if not identifier then return end
 
     local data = getData(identifier)
     local contract = data.contracts[id]
-    if not contract or not contract.trackerRequired then return end
+    if not contract or contract.status ~= 'in_progress' then return end
 
-    local hasKit = Bridge.GetItemCount(src, Config.TrackerKitItem) > 0
-    if not hasKit then
-        TriggerClientEvent('carboosting:client:trackerKitMissing', src)
-        return
+    contract.vehicleNetId = netId
+
+    if contract.trackerCount and contract.trackerCount > 0 then
+        Trackers.Register(netId, src, contract.trackerCount, contract.skillDifficulty, function(newCount)
+            contract.trackerCount = newCount
+            TriggerClientEvent('carboosting:client:contractTrackerUpdate', src, newCount)
+        end)
     end
-
-    TriggerClientEvent('carboosting:client:startContractTrackerRemoval', src, contract.skillDifficulty)
-end)
-
-RegisterNetEvent('carboosting:server:contractTrackerRemoved', function()
-    -- Confirmación informativa; el estado real se valida en la entrega
 end)
