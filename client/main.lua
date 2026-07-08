@@ -6,7 +6,8 @@ local carLocation = nil
 local dropOffLocation = nil
 local spawnedCar = nil
 local inTargetCar = false
-local trackerActive = false
+local currentTrackerCount = 0
+local trackersShown = false
 local dispatchSent = false
 local dropOffEmailSent = false
 local notificationShown = false
@@ -106,12 +107,14 @@ end
 ---------------------------------------------------------------
 -- Inicio de misión (servidor confirma y envía los importes ya calculados)
 ---------------------------------------------------------------
-RegisterNetEvent('carboosting:client:missionAccepted', function(missionId, instance)
+RegisterNetEvent('carboosting:client:missionAccepted', function(missionId, instance, trackerCount)
     local mission = Config.Missions[missionId]
     if not mission or boosting then return end
 
     currentMission = mission
     currentInstance = instance
+    currentTrackerCount = trackerCount or 0
+    trackersShown = false
     targetCar = mission.cars[math.random(#mission.cars)]
 
     local spawn = Config.SpawnLocations[math.random(#Config.SpawnLocations)]
@@ -148,6 +151,13 @@ RegisterNetEvent('carboosting:client:missionAccepted', function(missionId, insta
     local rewardText = BuildRewardText(mission, instance)
     ShowVehicleCard(displayName, vehiclePlate, vehicleColorLabel, rewardText)
 
+    -- Registra el vehículo en el sistema de rastreadores (netId real, para que
+    -- cualquier jugador dentro del coche pueda usar el hak_kit sobre él).
+    local vehNetId = GetVehicleNetId(spawnedCar)
+    if vehNetId ~= 0 then
+        TriggerServerEvent('carboosting:server:registerMissionVehicle', vehNetId)
+    end
+
     SetModelAsNoLongerNeeded(vehHash)
 
     local guardCount = math.random(mission.difficulty.npcGuards.min, mission.difficulty.npcGuards.max)
@@ -156,12 +166,21 @@ RegisterNetEvent('carboosting:client:missionAccepted', function(missionId, insta
     end
 
     boosting = true
-    trackerActive = mission.difficulty.trackerRequired
     dispatchSent = false
     dropOffEmailSent = false
     notificationShown = false
 
     Bridge.Notify(('Roba un %s. Cuidado, puede haber vigilantes armados.'):format(targetCar), 'inform')
+end)
+
+---------------------------------------------------------------
+-- Actualización del nº de rastreadores restantes
+---------------------------------------------------------------
+RegisterNetEvent('carboosting:client:missionTrackerUpdate', function(count)
+    currentTrackerCount = count
+    if trackersShown then
+        UpdateTrackerCount(count)
+    end
 end)
 
 ---------------------------------------------------------------
@@ -174,7 +193,8 @@ RegisterNetEvent('carboosting:client:stopBoosting', function(notify)
     currentMission = nil
     currentInstance = nil
     targetCar = nil
-    trackerActive = false
+    currentTrackerCount = 0
+    trackersShown = false
     if searchBlip then RemoveBlip(searchBlip) end
     if searchZoneBlip then RemoveBlip(searchZoneBlip) end
     if dropOffBlip then RemoveBlip(dropOffBlip) end
@@ -242,13 +262,14 @@ RegisterNetEvent('carboosting:client:completeOrder', function()
         return
     end
 
-    TriggerServerEvent('carboosting:server:carDelivered', currentMission.id, trackerActive)
+    TriggerServerEvent('carboosting:server:carDelivered', currentMission.id)
 
     boosting = false
     currentMission = nil
     currentInstance = nil
     targetCar = nil
-    trackerActive = false
+    currentTrackerCount = 0
+    trackersShown = false
     if spawnedCar and DoesEntityExist(spawnedCar) then DeleteEntity(spawnedCar) end
     if dropOffBlip then RemoveBlip(dropOffBlip) end
     if dropOffPed and DoesEntityExist(dropOffPed) then DeleteEntity(dropOffPed) end
@@ -264,31 +285,7 @@ RegisterNetEvent('carboosting:client:completeOrder', function()
 end)
 
 ---------------------------------------------------------------
--- Skill checks para quitar el rastreador
----------------------------------------------------------------
-RegisterNetEvent('carboosting:client:startTrackerRemoval', function()
-    if not currentMission then return end
-    local diffs = currentMission.difficulty.skillDifficulty
-    if not diffs or #diffs == 0 then return end
-
-    CreateThread(function()
-        local success = lib.skillCheck(diffs)
-        if success then
-            trackerActive = false
-            TriggerServerEvent('carboosting:server:trackerRemoved')
-            Bridge.Notify('¡Rastreador desactivado con éxito!', 'success')
-        else
-            Bridge.Notify('Fallaste desactivando el rastreador. Vuelve a intentarlo.', 'error')
-        end
-    end)
-end)
-
-RegisterNetEvent('carboosting:client:trackerKitMissing', function()
-    Bridge.Notify(('Necesitas un %s para desactivar el rastreador.'):format(Config.TrackerKitItem), 'error')
-end)
-
----------------------------------------------------------------
--- Bucle principal: detectar robo del vehículo, guardias, rastreador y entrega
+-- Bucle principal: detectar robo del vehículo, guardias y entrega
 ---------------------------------------------------------------
 CreateThread(function()
     while true do
@@ -322,10 +319,6 @@ CreateThread(function()
                         dispatchSent = true
                     end
 
-                    if trackerActive then
-                        TriggerServerEvent('carboosting:server:requestTrackerRemoval', currentMission.id)
-                    end
-
                     if searchBlip then RemoveBlip(searchBlip) end
                     if searchZoneBlip then RemoveBlip(searchZoneBlip) end
                 end
@@ -336,6 +329,10 @@ CreateThread(function()
                     if engineOn and not engineWasOn then
                         setupDropOff()
                         Bridge.Notify('Ruta trazada al punto de entrega.', 'inform')
+                        if currentTrackerCount > 0 then
+                            trackersShown = true
+                            UpdateTrackerCount(currentTrackerCount)
+                        end
                         dropOffEmailSent = true
                     end
                     engineWasOn = engineOn
@@ -349,11 +346,11 @@ CreateThread(function()
     end
 end)
 
--- Aviso periódico a la policía si el rastreador sigue activo
+-- Aviso periódico a la policía si quedan rastreadores activos
 CreateThread(function()
     while true do
         Wait(30000)
-        if boosting and inTargetCar and trackerActive and GetResourceState('ps-dispatch') == 'started' then
+        if boosting and inTargetCar and currentTrackerCount > 0 and GetResourceState('ps-dispatch') == 'started' then
             local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
             exports['ps-dispatch']:CarBoosting(vehicle)
         end
