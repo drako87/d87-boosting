@@ -12,8 +12,8 @@ local contractKeepInProgress = false
 local contractBlip = nil
 local contractSearchBlip = nil
 local contractTextUIShown = false
-local contractTrackerActive = false
-local contractTrackerRequestSent = false
+local contractTrackerCount = 0
+local contractTrackersShown = false
 
 function IsContractActive()
     return contractActive
@@ -97,8 +97,8 @@ RegisterNetEvent('carboosting:client:contractAccepted', function(contract)
     contractEngineWasOn = false
     contractDropOffSet = false
     contractKeepLocation = nil
-    contractTrackerActive = contract.trackerRequired or false
-    contractTrackerRequestSent = false
+    contractTrackerCount = contract.trackerCount or 0
+    contractTrackersShown = false
 
     local pickup = contract.pickup
     contractSearchBlip = AddBlipForCoord(pickup.x, pickup.y, pickup.z)
@@ -134,6 +134,12 @@ RegisterNetEvent('carboosting:client:contractAccepted', function(contract)
     end
     ShowVehicleCard(displayName, contractPlate, contractColorLabel, cardValue, cardLabel)
 
+    -- Registra el vehículo en el sistema de rastreadores (netId real)
+    local vehNetId = GetVehicleNetId(contractCar)
+    if vehNetId ~= 0 then
+        TriggerServerEvent('carboosting:server:registerContractVehicle', contract.id, vehNetId)
+    end
+
     SetModelAsNoLongerNeeded(hash)
 
     if contract.guardCount and contract.guardCount > 0 then
@@ -158,8 +164,8 @@ function cleanupContract()
     contractDropOffSet = false
     contractKeepLocation = nil
     contractCar = nil
-    contractTrackerActive = false
-    contractTrackerRequestSent = false
+    contractTrackerCount = 0
+    contractTrackersShown = false
     WantsToKeepVehicle = false
     if contractSearchBlip then RemoveBlip(contractSearchBlip) contractSearchBlip = nil end
     if contractBlip then RemoveBlip(contractBlip) contractBlip = nil end
@@ -169,22 +175,13 @@ function cleanupContract()
 end
 
 ---------------------------------------------------------------
--- Rastreador del contrato (solo si el contrato lo incluye)
+-- Actualización del nº de rastreadores restantes
 ---------------------------------------------------------------
-RegisterNetEvent('carboosting:client:startContractTrackerRemoval', function(skillDifficulty)
-    if not skillDifficulty or #skillDifficulty == 0 then return end
-
-    CreateThread(function()
-        local success = lib.skillCheck(skillDifficulty)
-        if success then
-            contractTrackerActive = false
-            TriggerServerEvent('carboosting:server:contractTrackerRemoved')
-            Bridge.Notify('¡Rastreador desactivado con éxito!', 'success')
-        else
-            contractTrackerRequestSent = false
-            Bridge.Notify('Fallaste desactivando el rastreador. Vuelve a intentarlo.', 'error')
-        end
-    end)
+RegisterNetEvent('carboosting:client:contractTrackerUpdate', function(count)
+    contractTrackerCount = count
+    if contractTrackersShown then
+        UpdateTrackerCount(count)
+    end
 end)
 
 ---------------------------------------------------------------
@@ -266,11 +263,6 @@ CreateThread(function()
                     if GetResourceState('ps-dispatch') == 'started' then
                         exports['ps-dispatch']:CarBoosting(vehicle)
                     end
-
-                    if contractTrackerActive and not contractTrackerRequestSent then
-                        contractTrackerRequestSent = true
-                        TriggerServerEvent('carboosting:server:requestContractTrackerRemoval', activeContract.id)
-                    end
                 end
 
                 if contractInTargetCar and not contractDropOffSet then
@@ -299,6 +291,10 @@ CreateThread(function()
                             SetNewWaypoint(dropoff.x, dropoff.y)
                             Bridge.Notify('Ruta trazada. Llega sin bajarte y pulsa E para entregar.', 'inform')
                         end
+                        if contractTrackerCount > 0 then
+                            contractTrackersShown = true
+                            UpdateTrackerCount(contractTrackerCount)
+                        end
                         contractDropOffSet = true
                     end
                     contractEngineWasOn = engineOn
@@ -322,7 +318,7 @@ CreateThread(function()
                                     hideContractTextUI()
                                     CreateThread(tryKeepContractVehicle)
                                 else
-                                    TriggerServerEvent('carboosting:server:completeContract', activeContract, contractTrackerActive)
+                                    TriggerServerEvent('carboosting:server:completeContract', activeContract)
                                     if DoesEntityExist(contractCar) then DeleteEntity(contractCar) end
                                     cleanupContract()
                                 end
