@@ -136,9 +136,19 @@ window.addEventListener('message', (event) => {
         document.getElementById('v-color').innerText = data.color;
         document.getElementById('v-reward-label').innerText = data.rewardLabel || 'Ganancia (entrega)';
         document.getElementById('v-reward').innerText = data.reward;
+        document.getElementById('v-trackers-row').classList.add('hidden');
         card.classList.remove('hidden');
     } else if (data.action === 'hideCard') {
         card.classList.add('hidden');
+        document.getElementById('v-trackers-row').classList.add('hidden');
+    } else if (data.action === 'updateTrackers') {
+        const row = document.getElementById('v-trackers-row');
+        if (data.count > 0) {
+            document.getElementById('v-trackers').innerText = data.count;
+            row.classList.remove('hidden');
+        } else {
+            row.classList.add('hidden');
+        }
     } else if (data.action === 'openTablet') {
         document.getElementById('wallet-overlay').classList.remove('hidden');
         showTab('account');
