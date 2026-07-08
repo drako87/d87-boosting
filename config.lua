@@ -100,6 +100,10 @@ Config.ContractRecentMemory = 6   -- nº de coches recientes a evitar repetir po
 Config.ContractInteractDistance = 8.0
 Config.ContractTrackerPenalty = 0.5 -- multiplicador de pago si se entrega con el rastreador aún activo
 
+-- Sistema de rastreadores (misiones y contratos)
+Config.TrackerMaxCount = 5           -- nº máximo de rastreadores que puede llevar un vehículo
+Config.TrackerDeactivateCooldown = 5000 -- ms de espera entre intentos de desactivación (uno tras otro)
+
 -- Tiers de contratos: cada uno define coches, pago, coste de "quedarte el
 -- vehículo", vigilantes (cantidad y armamento) y probabilidad de que el
 -- contrato incluya rastreador (requiere hak_kit para desactivarlo).
@@ -111,7 +115,7 @@ Config.ContractTiers = {
       keepCost = { min = 40, max = 70 },
       guardCount = { min = 0, max = 1 },
       guardWeapons = {'WEAPON_BAT'},
-      trackerChance = 0,      -- % de probabilidad de llevar rastreador
+      trackerChance = 0,      -- % de probabilidad de llevar rastreador(es)
       skillDifficulty = {} },
     { level = 2, label = 'Intermedio', color = '#cd7f32', minCompleted = 5,
       cars = {'dominator', 'gauntlet', 'f620', 'sultan', 'tampa'},
@@ -128,7 +132,7 @@ Config.ContractTiers = {
       guardCount = { min = 2, max = 4 },
       guardWeapons = {'WEAPON_PISTOL', 'WEAPON_MICROSMG'},
       trackerChance = 60,
-      skillDifficulty = {'easy', 'medium'} },
+      skillDifficulty = {'easy'} },
     { level = 4, label = 'Élite', color = '#d4af37', minCompleted = 30,
       cars = {'turismor', 'entityxf', 'reaper', 'tempesta', 'vagner'},
       reward = { min = 120, max = 180 },
@@ -136,7 +140,7 @@ Config.ContractTiers = {
       guardCount = { min = 3, max = 5 },
       guardWeapons = {'WEAPON_MICROSMG', 'WEAPON_ASSAULTRIFLE'},
       trackerChance = 85,
-      skillDifficulty = {'easy', 'medium', 'hard'} },
+      skillDifficulty = {'easy'} },
 }
 
 -- Misiones: cada una define pago, vehículos, dificultad (guardias/tracker) y requisitos
@@ -171,9 +175,9 @@ Config.Missions = {
             npcGuards = { min = 2, max = 2 },
             guardWeapons = {'WEAPON_BAT', 'WEAPON_PISTOL'},
             trackerRequired = true,
-            skillDifficulty = {'easy', 'medium'},
+            skillDifficulty = {'easy'},
         },
-        description = 'El vehículo tiene rastreador y 2 vigilantes armados lo custodian. Necesitas un kit de hackeo (hak_kit) para desactivar el rastreador. Pago en dinero negro.',
+        description = 'El vehículo tiene rastreador(es) y 2 vigilantes armados lo custodian. Necesitas un kit de hackeo (hak_kit) para desactivarlos manualmente. Pago en dinero negro.',
     },
     [3] = {
         id = 3,
@@ -191,8 +195,8 @@ Config.Missions = {
             npcGuards = { min = 3, max = 3 },
             guardWeapons = {'WEAPON_PISTOL', 'WEAPON_MICROSMG'},
             trackerRequired = true,
-            skillDifficulty = {'easy', 'medium', 'hard'},
+            skillDifficulty = {'easy'},
         },
-        description = 'Vehículo de alta gama muy vigilado (3 guardias armados) y con rastreador. Necesitas un kit de hackeo (hak_kit). Pago combinado: criptomonedas + dinero negro.',
+        description = 'Vehículo de alta gama muy vigilado (3 guardias armados) y con rastreador(es). Necesitas un kit de hackeo (hak_kit). Pago combinado: criptomonedas + dinero negro.',
     },
 }
