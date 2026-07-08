@@ -13,6 +13,11 @@ function HideVehicleCard()
     SendNUIMessage({ action = 'hideCard' })
 end
 
+-- Muestra/actualiza el nº de rastreadores en la tarjeta; se oculta solo al llegar a 0
+function UpdateTrackerCount(count)
+    SendNUIMessage({ action = 'updateTrackers', count = count })
+end
+
 function BuildRewardText(mission, instance)
     if mission.paymentType == 'crypto' then
         return instance.rewardCrypto .. ' cripto'
